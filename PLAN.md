@@ -123,7 +123,7 @@ Ranked, by how little of it we control:
 
 ### Milestone 0: a harness that can fail
 
-- [ ] Repository skeleton, Makefile, and `t/run.sh` with a self-check
+- [x] Repository skeleton, Makefile, and `t/run.sh` with a self-check
       why: the harness is the thing most likely to be silently broken, so it
       is written first and watched failing first. Every test script must
       report how many assertions it intended to run, and `run.sh` must refuse
@@ -132,25 +132,37 @@ Ranked, by how little of it we control:
 
 ### Milestone 1: the cost functions, checked across a language boundary
 
-- [ ] Cumulative sufficient statistics and the change-in-mean cost
+- [x] Cumulative sufficient statistics and the change-in-mean cost
       why: every later layer calls `seg_cost(s, e)` tens of thousands of
       times, so it has to be O(1) from prefix sums, and prefix sums are
       exactly where catastrophic cancellation lives.
 - [ ] Cross-language check of the mean cost against `scipy.stats.norm.logpdf`
       why: `SS - S^2/m` and `sum((y - mean(y))^2)` are the same number in
       exact arithmetic and not in doubles. This is the check that can see it.
-- [ ] Change in variance and change in mean-and-variance costs
+- [x] Change in variance and change in mean-and-variance costs
       why: the variance costs are where the degenerate segment lives, and a
       cost function that returns `-Inf` for a constant segment makes every
       optimiser above it choose nonsense.
-- [ ] The Poisson cost, for count telemetry
+- [x] The Poisson cost, for count telemetry
       why: failed logins per minute are counts, not Gaussians, and the
       normal costs on small counts give the wrong segmentation. The
       `0 * log 0` limit has to be handled explicitly.
-- [ ] Measure the cancellation error of the prefix-sum costs
+- [x] Measure the cancellation error of the prefix-sum costs
       why: claiming the O(1) trick is safe is not the same as knowing how
       wrong it gets. Compare against a two-pass per-segment computation on
       series with a large offset and report the worst observed error.
+      done: two separate defects, both measured. Centring the prefix sums
+      takes the worst segment cost error at offset 1e6 from 6.8e-2 to
+      5.4e-12. And the variance floor is a 1e8 amplifier sitting directly
+      downstream of a cancelling subtraction: a one-observation segment
+      whose residual sum of squares is exactly 0 came out of the prefix
+      difference as 5.4e-15, and 5.4e-15 / 1e-8 is an error in the seventh
+      decimal place of the cost. Fixed by answering the exact cases exactly
+      and by falling back to a two-pass computation for any segment whose
+      prefix difference is at or below its own rounding error, which took
+      the worst case on a large-scale series from 2.0e+1 to 2.3e-13.
+      The Poisson cost at lambda = 5e5 keeps an absolute error of 1.3e-7
+      and always will: its three terms are each 6e6 and their sum is 13.
 
 ### Milestone 2: exact segmentation
 
@@ -177,6 +189,15 @@ Ranked, by how little of it we control:
       why: `minseg` changes which candidates are admissible, and an
       off-by-one in the pruning loop's bounds is a defect brute force can
       see and nothing else can.
+
+- [ ] Measure whether the relative variance floor changes any segmentation
+      why: `CP_VARFLOOR_REL` was added to stop the floor amplifying
+      cancellation noise and then the exact fallback made that unnecessary,
+      so it is currently a modelling choice with no measurement behind it.
+      The claim to test is that on data of large scale an absolute floor of
+      1e-8 makes a near-constant run so cheap that the optimiser brackets it
+      with spurious change points. Either that is measurable, or the
+      relative floor should be deleted.
 
 ### Milestone 3: model selection
 
