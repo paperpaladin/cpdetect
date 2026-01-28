@@ -60,3 +60,44 @@ scratch <- function(name) {
   if (!nzchar(d)) stop("CPDETECT_SCRATCH is not set; run through t/run.sh")
   file.path(d, name)
 }
+
+# ---------------------------------------------------------------- the oracle
+#
+# Talking to t/oracle.py. The request goes through a file rather than a pipe
+# so that a failing case can be re-run by hand with the exact bytes R sent,
+# and every number crosses as %.17g, which round-trips an IEEE double
+# exactly. A comparison that loses two digits in the text is a comparison
+# against a slightly different number, and would need a tolerance that
+# describes the printf format rather than the arithmetic.
+
+g17 <- function(x) sprintf("%.17g", x)
+
+oracle_available <- function() {
+  r <- suppressWarnings(system2("python3", c("-c", shQuote("import scipy, numpy")),
+                                stdout = FALSE, stderr = FALSE))
+  identical(r, 0L)
+}
+
+oracle <- function(action, lines, tag = action) {
+  req <- scratch(paste0("req_", tag, "_", .H$pass + .H$fail, ".txt"))
+  writeLines(lines, req)
+  out <- suppressWarnings(
+    system2("python3",
+            c(shQuote(file.path(Sys.getenv("CPDETECT_ROOT", unset = "."), "t", "oracle.py")),
+              action, shQuote(req)),
+            stdout = TRUE, stderr = TRUE))
+  st <- attr(out, "status")
+  if (!is.null(st) && st != 0)
+    stop("oracle.py ", action, " failed (status ", st, "):\n", paste(out, collapse = "\n"))
+  out
+}
+
+# The common shape: describe a cost object and a list of (s, e) pairs.
+oracle_cost_req <- function(cost, S, E) {
+  c(paste("type", cost$type),
+    paste("sigma2", g17(cost$sigma2)),
+    paste("mu", g17(if (is.null(cost$mu)) 0 else cost$mu)),
+    paste("varfloor", g17(cost$varfloor)),
+    paste("y", paste(g17(cost$y), collapse = " ")),
+    sprintf("seg %d %d", S, E))
+}
