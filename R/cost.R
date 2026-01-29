@@ -228,13 +228,19 @@ cp_cost <- function(y, type = "mean", sigma2 = 1, mu = NULL,
     self$fit <- function(s, e) c(lambda = (z[e + 1] - z[s + 1]) / (e - s))
   }
 
-  # Total cost of a segmentation given as interior change points (the last
-  # index of each segment but the final one).
-  self$total <- function(taus) {
-    b <- c(0L, as.integer(taus), n)
-    sum(self$seg(b[-length(b)], b[-1]))
-  }
   self
+}
+
+# Total cost of a segmentation, given as interior change points: the index of
+# the last observation of every segment but the last. A free function rather
+# than a member, because R/penalty.R wraps a cost object to add MBIC's
+# log(segment length) term and a member closure would still be calling the
+# unwrapped seg().
+cp_total <- function(cost, taus) {
+  b <- c(0L, as.integer(taus), cost$n)
+  if (any(diff(b) < 1L)) stop("cp_total: change points must be strictly increasing within 1..n-1")
+  sum(vapply(seq_len(length(b) - 1L),
+             function(i) cost$seg(b[i], b[i + 1L]), numeric(1)))
 }
 
 # Vectorised over both arguments, for the oracle dumps where s and e are

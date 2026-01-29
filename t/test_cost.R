@@ -90,9 +90,9 @@ ok(is.finite(cz$seg(0, 1)), "poisson_single_zero_is_finite")
 # Additivity of total(): the number the optimisers minimise has to be the sum
 # of the segment costs and nothing else.
 cm <- cp_cost(y2, "mean")
-ok_near(cm$total(integer(0)), cm$seg(0, 40), 0, "total_no_changepoints_is_one_segment")
-ok_near(cm$total(20), cm$seg(0, 20) + cm$seg(20, 40), 0, "total_one_changepoint_is_two_segments")
-ok_near(cm$total(c(10, 20, 30)),
+ok_near(cp_total(cm, integer(0)), cm$seg(0, 40), 0, "total_no_changepoints_is_one_segment")
+ok_near(cp_total(cm, 20), cm$seg(0, 20) + cm$seg(20, 40), 0, "total_one_changepoint_is_two_segments")
+ok_near(cp_total(cm, c(10, 20, 30)),
         cm$seg(0, 10) + cm$seg(10, 20) + cm$seg(20, 30) + cm$seg(30, 40), 0,
         "total_three_changepoints_is_four_segments")
 

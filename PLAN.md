@@ -136,7 +136,7 @@ Ranked, by how little of it we control:
       why: every later layer calls `seg_cost(s, e)` tens of thousands of
       times, so it has to be O(1) from prefix sums, and prefix sums are
       exactly where catastrophic cancellation lives.
-- [ ] Cross-language check of the mean cost against `scipy.stats.norm.logpdf`
+- [x] Cross-language check of the mean cost against `scipy.stats.norm.logpdf`
       why: `SS - S^2/m` and `sum((y - mean(y))^2)` are the same number in
       exact arithmetic and not in doubles. This is the check that can see it.
 - [x] Change in variance and change in mean-and-variance costs
@@ -166,10 +166,13 @@ Ranked, by how little of it we control:
 
 ### Milestone 2: exact segmentation
 
-- [ ] Optimal Partitioning
+- [x] Optimal Partitioning
       why: the base case. Everything after it is an optimisation of this, and
       a wrong answer here is invisible unless something enumerates.
-- [ ] Brute-force enumeration and the agreement sweep
+      done: 67 cases, all four costs, four penalties, minseg 1 to 3, n up
+      to 25. Worst |op - brute| 2.8e-14 against a tolerance of 1e-9, and
+      the change point vectors are identical in every case.
+- [x] Brute-force enumeration and the agreement sweep
       why: the hard invariant. This is the strongest oracle in the project
       and it has to exist before PELT, or PELT's agreement with OP will be
       agreement with a shared mistake.
@@ -201,7 +204,7 @@ Ranked, by how little of it we control:
 
 ### Milestone 3: model selection
 
-- [ ] BIC, AIC and Hannan-Quinn penalties
+- [x] BIC, AIC and Hannan-Quinn penalties
       why: the penalty is the only thing standing between a detector and one
       change point per observation, and the number of parameters a change
       costs differs per cost function.
