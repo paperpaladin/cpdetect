@@ -19,7 +19,7 @@ full double precision with %.17g so that nothing is lost in the text.
 
 Requests:
 
-  cost      type/params/y, then one "seg s e" per line
+  cost      type/params/y[/mbic], then one "seg s e" per line
             -> one cost per seg line
   brute     type/params/y/penalty/minseg/maxcp
             -> "best <penalised cost>", "cp <t1> <t2> ...", "n <count>"
@@ -99,7 +99,14 @@ COSTS = {"mean": cost_mean, "var": cost_var,
 
 
 def seg_cost(req, s, e):
-    return COSTS[req["type"]](req["y"][s:e], req)
+    c = COSTS[req["type"]](req["y"][s:e], req)
+    if req.get("mbic", 0.0):
+        # Zhang and Siegmund's log(segment length) term, which is what makes
+        # their criterion segment-additive. Written here independently from
+        # the R side rather than taken from it: the whole point of a second
+        # implementation is that it is not a transcription.
+        c += math.log(e - s)
+    return c
 
 
 # ------------------------------------------------------------------ actions

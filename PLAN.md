@@ -176,7 +176,7 @@ Ranked, by how little of it we control:
       why: the hard invariant. This is the strongest oracle in the project
       and it has to exist before PELT, or PELT's agreement with OP will be
       agreement with a shared mistake.
-- [ ] An independent brute force in Python
+- [x] An independent brute force in Python
       why: R's brute force and R's DP call the same `seg_cost`. If that
       function is wrong they agree and are both wrong. Python's does not.
 - [ ] PELT, with a pruning counter
