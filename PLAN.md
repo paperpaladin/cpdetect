@@ -179,7 +179,7 @@ Ranked, by how little of it we control:
 - [x] An independent brute force in Python
       why: R's brute force and R's DP call the same `seg_cost`. If that
       function is wrong they agree and are both wrong. Python's does not.
-- [ ] PELT, with a pruning counter
+- [x] PELT, with a pruning counter
       why: the pruning inequality is the classic bug in this algorithm and
       the only way to see it is to require exact agreement with OP while
       proving the pruning actually fired.
@@ -188,7 +188,7 @@ Ranked, by how little of it we control:
       maximised log-likelihood cost K = 0 is the usual argument, and the
       variance floor is a modification of the cost that the argument does
       not cover. Check it by enumeration rather than by assertion.
-- [ ] Minimum segment length, in all three searches
+- [x] Minimum segment length, in all three searches
       why: `minseg` changes which candidates are admissible, and an
       off-by-one in the pruning loop's bounds is a defect brute force can
       see and nothing else can.
