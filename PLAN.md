@@ -183,7 +183,7 @@ Ranked, by how little of it we control:
       why: the pruning inequality is the classic bug in this algorithm and
       the only way to see it is to require exact agreement with OP while
       proving the pruning actually fired.
-- [ ] Verify the K = 0 precondition numerically
+- [x] Verify the K = 0 precondition numerically
       why: PELT's exactness rests on `C(s,t) + C(t,T) + K <= C(s,T)`. For a
       maximised log-likelihood cost K = 0 is the usual argument, and the
       variance floor is a modification of the cost that the argument does
@@ -208,7 +208,7 @@ Ranked, by how little of it we control:
       why: the penalty is the only thing standing between a detector and one
       change point per observation, and the number of parameters a change
       costs differs per cost function.
-- [ ] MBIC, and the pruning constant it breaks
+- [x] MBIC, and the pruning constant it breaks
       why: MBIC adds `log(segment length)` to each segment's cost, which is
       not superadditive, so `K = 0` is no longer valid and PELT silently
       stops being exact. Measure the disagreement rather than assuming it.
