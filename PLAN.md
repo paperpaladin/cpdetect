@@ -239,7 +239,7 @@ Ranked, by how little of it we control:
 - [ ] Recovery rate and false-positive rate, over seeds, with variance
       why: a single run is noise and a single accuracy number hides the
       trade. Both rates, both reported, with the spread across seeds.
-- [ ] Binary segmentation, and the rate at which it is wrong
+- [x] Binary segmentation, and the rate at which it is wrong
       why: the greedy method is what most people actually run. Measuring how
       often it differs from the exact answer is a result about the method,
       not a bug in ours.
