@@ -63,28 +63,26 @@ cat("#   offset      centred    uncentred\n")
 for (i in seq_along(offsets))
   cat(sprintf("#   %-9g %-12.3g %.3g\n", offsets[i], cent[i], raw[i]))
 
-# The relative part of the variance floor. On data whose scale is large, an
-# absolute floor of 1e-8 sits far below the noise in the residual sum of
-# squares, and the cost of a near-constant segment becomes noise divided by
-# 1e-8. Series: a long run of a single large value with one short noisy
-# stretch, so that some segments genuinely do hit the floor.
+# The variance floor on data whose scale is large. An absolute floor of
+# 1e-8 sits far below the noise in the residual sum of squares there, and
+# without a mitigation the cost of a near-constant segment becomes that
+# noise divided by 1e-8. Series: a long run of a single large value with
+# one short noisy stretch, so that some segments genuinely do hit the floor.
 big <- c(rep(5e5, 25), 5e5 + rnorm(10, 0, 1e4), rep(5e5, 25))
-rel <- worst_err(big, center = TRUE)                      # floor = max(1e-8, rel part)
-abs_only <- worst_err(big, center = TRUE, varfloor = 1e-8)
-ok(rel <= TOL, "floored_segments_agree_with_two_pass",
-   sprintf("worst %.3g", rel))
+dflt <- worst_err(big, center = TRUE)
+bigger <- worst_err(big, center = TRUE, varfloor = 1e-3)
+ok(dflt <= TOL, "floored_segments_agree_with_two_pass",
+   sprintf("worst %.3g at the default floor of %g", dflt, CP_VARFLOOR))
 
-# Recorded rather than asserted, because it is the measurement that decided
-# which of two mitigations is doing the work. With only the relative floor
-# and no exact fallback this series had a worst error of 4.6e-2, and with
-# only the absolute floor and no fallback, 2.0e+1. With the fallback in
-# place both floors give 2.3e-13, so the floor is NOT what makes the
-# arithmetic right and the comment in R/cost.R says so. The relative floor
-# stays as a modelling choice about what counts as a constant segment on
-# data whose scale is large, and whether it changes any segmentation is a
-# separate question with its own measurement.
-ok(abs_only <= TOL, "absolute_only_floor_is_equally_accurate_now",
-   sprintf("absolute-only %.3g vs relative %.3g", abs_only, rel))
+# This pair is the measurement that decided which mitigation is doing the
+# work. A floor proportional to the scale of the data was tried first and
+# got this series from 2.0e+1 to 4.6e-2; the exact fallback in rss_of()
+# gets it to 2.3e-13 with the plain absolute floor, and raising the floor
+# by five orders of magnitude on top of that changes nothing. So the floor
+# is not what makes the arithmetic right, and the relative floor was
+# deleted after a separate sweep found it changed no segmentation either.
+ok(bigger <= TOL, "the_accuracy_does_not_depend_on_the_size_of_the_floor",
+   sprintf("floor 1e-3 gives %.3g against %.3g at the default", bigger, dflt))
 
 # The exact cases. A one-observation segment has residual sum of squares
 # exactly zero whatever the offset, and the code must return that rather

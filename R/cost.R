@@ -47,23 +47,23 @@
 # The absolute part of the floor. A second, relative part is added below.
 CP_VARFLOOR <- 1e-8
 
-# The relative part, in units of the mean square of the (centred) data.
+# There was a second, relative part here, proportional to the mean square of
+# the data, and it is gone. It was added because an absolute floor sits far
+# below the rounding error of the residual sum of squares on data of large
+# scale, so the floor divides noise by 1e-8 and puts 1e4 into a cost. That
+# problem is real and it is fixed by rss_of()'s exact fallback instead,
+# which t/test_cancel.R shows makes the plain 1e-8 floor just as accurate:
+# both give 2.3e-13 on the series that produced 2.0e+1 without it.
 #
-# An absolute floor alone is not enough, and the reason is the same
-# amplification: the residual sum of squares computed from prefix sums
-# carries an absolute error of order eps * sum(y^2), so on a series of bytes
-# per second with values around 10^6 that error is around 10^-4. Dividing it
-# by a floor of 10^-8 puts 10^4 into a cost, which is larger than any real
-# term in it. The floor therefore has to sit above the noise in the quantity
-# it is flooring. 1024 * eps = 2.3e-13 of the mean square is about three
-# orders of magnitude above that noise and, for data of order 1, is far
-# below the 10^-8 absolute floor and so changes nothing.
-#
-# This is a modelling choice and it is visible in the answers: it says a
-# segment may not be fitted with a variance smaller than the resolution at
-# which a variance can be computed at all. t/test_cancel.R measures what it
-# is worth.
-CP_VARFLOOR_REL <- 1024 * .Machine$double.eps
+# What was left was a modelling claim with nothing behind it -- that a
+# segment should not be fitted with a variance below the scale of the data.
+# Measured over 288 configurations (four data scales from 1e2 to 1e9, stalled
+# runs of 2, 3 and 5 identical values, the var and meanvar costs, minimum
+# segment lengths 1 and 2, six seeds each), the relative floor changed the
+# segmentation in 0 of them. At 1024 * eps of the mean square it is 2.1e-4
+# on data whose variance is 1.1e9, which is never near any decision. A floor
+# large enough to matter would be a knob with no oracle behind it, and
+# inventing one is the thing this tree exists not to do.
 
 cp_types <- c("mean", "var", "meanvar", "poisson")
 
@@ -95,8 +95,7 @@ cp_cost <- function(y, type = "mean", sigma2 = 1, mu = NULL,
   z <- c(0, cumsum(yc))                      # prefix sum of the shifted data
   zz <- c(0, cumsum(yc * yc))                # prefix sum of its squares
   log2pi <- log(2 * pi)
-  if (is.null(varfloor))
-    varfloor <- max(CP_VARFLOOR, CP_VARFLOOR_REL * (if (n) sum(yc * yc) / n else 0))
+  if (is.null(varfloor)) varfloor <- CP_VARFLOOR
   if (!(is.numeric(varfloor) && length(varfloor) == 1L && is.finite(varfloor) && varfloor > 0))
     stop("cp_cost: varfloor must be a single positive finite number")
 

@@ -193,7 +193,7 @@ Ranked, by how little of it we control:
       off-by-one in the pruning loop's bounds is a defect brute force can
       see and nothing else can.
 
-- [ ] Measure whether the relative variance floor changes any segmentation
+- [x] Measure whether the relative variance floor changes any segmentation
       why: `CP_VARFLOOR_REL` was added to stop the floor amplifying
       cancellation noise and then the exact fallback made that unnecessary,
       so it is currently a modelling choice with no measurement behind it.
@@ -201,6 +201,15 @@ Ranked, by how little of it we control:
       1e-8 makes a near-constant run so cheap that the optimiser brackets it
       with spurious change points. Either that is measurable, or the
       relative floor should be deleted.
+      done: 0 of 288 configurations changed segmentation (four data scales
+      from 1e2 to 1e9, stalled runs of 2, 3 and 5 identical values, the var
+      and meanvar costs, minimum segment lengths 1 and 2, six seeds each).
+      Deleted. At 1024 * eps of the mean square it is 2.1e-4 on data whose
+      variance is 1.1e9 and is never near a decision; a floor large enough
+      to matter would be a knob with no oracle behind it. The numerics it
+      was added for are handled by the exact fallback in rss_of() instead,
+      and t/test_cancel.R shows raising the floor by five further orders
+      changes the accuracy not at all.
 
 ### Milestone 3: model selection
 
