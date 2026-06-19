@@ -242,7 +242,7 @@ Ranked, by how little of it we control:
 
 ### Milestone 5: does it find the changes that are there
 
-- [ ] Seeded generators for known-answer series, with the seed asserted
+- [x] Seeded generators for known-answer series, with the seed asserted
       why: a seeded check can pass with the seed ignored. The digest of the
       generated series, not the report about it, is what gets compared.
 - [ ] Recovery rate and false-positive rate, over seeds, with variance
