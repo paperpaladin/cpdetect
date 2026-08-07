@@ -30,12 +30,8 @@ cp_binseg <- function(cost, beta, minseg = 1L) {
     hi <- e - minseg
     if (lo > hi) return(NULL)
     ts <- lo:hi
-    # cost$seg is vectorised over its FIRST argument with the second
-    # scalar, which is the shape the dynamic programs need. Here the
-    # varying index is in both positions, so the right-hand side is a loop.
-    left <- vapply(ts, function(t) cost$seg(s, t), numeric(1))
-    right <- vapply(ts, function(t) cost$seg(t, e), numeric(1))
-    gain <- cost$seg(s, e) - (left + right)
+    gain <- cost$seg(s, e) -
+      (cost$seg(rep(s, length(ts)), ts) + cost$seg(ts, rep(e, length(ts))))
     ntested <<- ntested + length(ts)
     i <- which.max(gain)
     list(t = ts[i], gain = gain[i])

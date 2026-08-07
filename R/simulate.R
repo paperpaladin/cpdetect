@@ -37,6 +37,10 @@ cp_place <- function(n, k, gap = 1L, tries = 10000L) {
 # parameter vector is recycled to length(cps) + 1.
 cp_sim <- function(n, cps = integer(0), type = "mean",
                    mean = 0, sd = 1, lambda = 1, seed = NULL) {
+  # Forced before set.seed for the reason spelled out in R/permtest.R: a
+  # lazily evaluated argument that itself draws from the generator would
+  # run after the seed was set and silently replace it.
+  force(n); force(cps); force(type); force(mean); force(sd); force(lambda)
   if (!is.null(seed)) set.seed(seed)
   cps <- as.integer(cps)
   b <- c(0L, cps, as.integer(n))
@@ -63,6 +67,8 @@ cp_sim <- function(n, cps = integer(0), type = "mean",
 # over it.
 cp_sim_random <- function(n, k, type = "mean", effect = 3, gap = 1L,
                           base_sd = 1, base_lambda = 5, seed = NULL) {
+  force(n); force(k); force(type); force(effect); force(gap)
+  force(base_sd); force(base_lambda)
   if (!is.null(seed)) set.seed(seed)
   cps <- cp_place(n, k, gap)
   m <- k + 1L

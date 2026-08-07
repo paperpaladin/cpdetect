@@ -29,9 +29,13 @@
 # leading zero so that the sum over (s+1)..e is pre[e + 1] - pre[s + 1] with
 # no special case at s = 0.
 #
-# seg() is vectorised over s with e scalar, because that is the shape of the
-# inner loop in both Optimal Partitioning and PELT, and an R loop over
-# candidate start points costs more than the arithmetic it performs.
+# seg() is vectorised over BOTH arguments, recycling in the usual R way.
+# The shape the dynamic programs want is a vector of start points against
+# one end point, which is why it exists at all: an R loop over candidate
+# start points costs more than the arithmetic it performs. The single
+# split search in R/permtest.R wants the other shape, one start point
+# against a vector of ends, and the at-most-one-change statistic wants
+# both varying at once.
 
 # The smallest variance any segment is allowed to be fitted with.
 #
@@ -137,8 +141,9 @@ cp_cost <- function(y, type = "mean", sigma2 = 1, mu = NULL,
       bad <- which(r > 0 & r <= rss_noise)
       if (length(bad)) {
         sv <- rep_len(s, length(r))
+        ev <- rep_len(e, length(r))
         r[bad] <- vapply(bad, function(k) {
-          v <- yc[(sv[k] + 1):e]
+          v <- yc[(sv[k] + 1):ev[k]]
           sum((v - mean(v)) ^ 2)
         }, numeric(1))
       }
@@ -176,7 +181,8 @@ cp_cost <- function(y, type = "mean", sigma2 = 1, mu = NULL,
         bad <- which(r > 0 & r <= q_noise)
         if (length(bad)) {
           sv <- rep_len(s, length(r))
-          r[bad] <- vapply(bad, function(k) sum(d2[(sv[k] + 1):e]), numeric(1))
+          ev <- rep_len(e, length(r))
+          r[bad] <- vapply(bad, function(k) sum(d2[(sv[k] + 1):ev[k]]), numeric(1))
         }
       }
       r

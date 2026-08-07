@@ -227,15 +227,15 @@ Ranked, by how little of it we control:
 
 ### Milestone 4: is the change real
 
-- [ ] Permutation test for a single change point
+- [x] Permutation test for a single change point
       why: a detected change point is a maximum over n-1 candidates, so its
       apparent significance is inflated by the maximisation. The permutation
       distribution of the same maximum is the only honest null here.
-- [ ] Calibrate the permutation test under the null
+- [x] Calibrate the permutation test under the null
       why: a test whose p-values are not uniform under the null is not a
       test. Measure the uniformity with `ks.test` and the rejection rate at
       alpha = 0.05 over many seeded null series.
-- [ ] Measure the power curve
+- [x] Measure the power curve
       why: the rejection rate under the null is half the picture, and a test
       with a correct size and no power is a random number generator with
       good manners.
