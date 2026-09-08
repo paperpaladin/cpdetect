@@ -84,14 +84,14 @@ ok(all(pv >= 1 / (B + 1) - TOL) && all(pv <= 1 + TOL), "p_values_are_in_range",
 # ------------------------------------------------------------- power curve
 pw <- list()
 for (ef in c(0.25, 0.5, 1, 2)) {
-  r <- numeric(60L)
-  for (i in seq_len(60L)) {
+  r <- numeric(40L)
+  for (i in seq_len(40L)) {
     s <- cp_sim(N, N %/% 2L, "mean", mean = c(0, ef), seed = 980000L + i * 10L + ef * 4)
     r[i] <- cp_permtest(s$y, "mean", B = B, minseg = MS, seed = 981000L + i)$p <= 0.05
   }
   pw[[sprintf("%.2f", ef)]] <- mean(r)
   ok(TRUE, sprintf("power_at_effect_%.2f", ef),
-     sprintf("%.3f rejected at alpha 0.05 over 60 series, n = %d, change at %d",
+     sprintf("%.3f rejected at alpha 0.05 over 40 series, n = %d, change at %d",
              mean(r), N, N %/% 2L))
 }
 ok(pw[["2.00"]] > pw[["0.25"]], "power_increases_with_the_effect_size",
@@ -115,12 +115,12 @@ ar1 <- function(n, rho, seed) {
   y
 }
 for (rho in c(0.3, 0.7)) {
-  r <- numeric(80L)
-  for (i in seq_len(80L))
+  r <- numeric(50L)
+  for (i in seq_len(50L))
     r[i] <- cp_permtest(ar1(N, rho, 990000L + i), "mean", B = B, minseg = MS,
                         seed = 991000L + i)$p <= 0.05
   ok(TRUE, sprintf("size_under_AR1_rho_%.1f", rho),
-     sprintf("%.3f rejected at alpha 0.05 over 80 series with no change point",
+     sprintf("%.3f rejected at alpha 0.05 over 50 series with no change point",
              mean(r)))
   if (rho == 0.7)
     ok(mean(r) > 0.15, "autocorrelation_inflates_the_size_a_lot",

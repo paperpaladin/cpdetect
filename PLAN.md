@@ -245,14 +245,14 @@ Ranked, by how little of it we control:
 - [x] Seeded generators for known-answer series, with the seed asserted
       why: a seeded check can pass with the seed ignored. The digest of the
       generated series, not the report about it, is what gets compared.
-- [ ] Recovery rate and false-positive rate, over seeds, with variance
+- [x] Recovery rate and false-positive rate, over seeds, with variance
       why: a single run is noise and a single accuracy number hides the
       trade. Both rates, both reported, with the spread across seeds.
 - [x] Binary segmentation, and the rate at which it is wrong
       why: the greedy method is what most people actually run. Measuring how
       often it differs from the exact answer is a result about the method,
       not a bug in ours.
-- [ ] The failure modes: small jumps, short segments, adjacent changes
+- [x] The failure modes: small jumps, short segments, adjacent changes
       why: the README has to say what does not work, and it has to say it
       with numbers from a corpus built to break it.
 

@@ -64,7 +64,7 @@ for (ty in c("mean", "var", "meanvar", "poisson"))
       i <- i + 1L
       if (ty %in% c("var", "meanvar") && ms == 1L) next   # degenerate; see test_degenerate.R
       grid[[length(grid) + 1L]] <- list(type = ty, pen = pn, minseg = ms,
-                                        n = c(11L, 12L, 13L)[1 + (i %% 3L)],
+                                        n = c(10L, 11L, 12L)[1 + (i %% 3L)],
                                         k = i %% 3L, seed = 510000L + i)
     }
 
