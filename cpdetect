@@ -1,0 +1,178 @@
+#!/usr/bin/env Rscript
+# cpdetect -- offline change point detection for security and operational
+# telemetry. See README.md.
+#
+# Exit status is part of the contract and the three values are distinct
+# because a refusal and a wrong answer are different events:
+#
+#   0   a clean run
+#   1   malformed or unreadable input: a file that is not there, a line
+#       that is not a number, an empty series, counts that are negative
+#       under a Poisson model
+#   2   a usage error: an unknown option, an unknown cost or method, a
+#       minimum segment length that cannot apply to the data
+#
+# The distinction is asserted in t/test_cli.R, both directions. Returning 1
+# for a usage error would make "you typed it wrong" indistinguishable from
+# "your data is bad", and both of those indistinguishable from a crash.
+
+suppressWarnings({
+  ROOT <- local({
+    a <- commandArgs(trailingOnly = FALSE)
+    f <- sub("^--file=", "", a[grep("^--file=", a)])
+    if (length(f)) dirname(normalizePath(f[1])) else getwd()
+  })
+  for (f in sort(list.files(file.path(ROOT, "R"), pattern = "\\.R$", full.names = TRUE)))
+    source(f)
+})
+
+USAGE <- paste(
+  "usage: cpdetect [OPTIONS] FILE            one number per line; - is stdin",
+  "  --cost mean|var|meanvar|poisson   which parameter may change (mean)",
+  "  --method op|pelt|binseg|brute     exact DP, pruned exact DP, greedy,",
+  "                                    exhaustive (pelt)",
+  "  --penalty bic|mbic|aic|hq|none|N  per-changepoint penalty (bic)",
+  "  --minseg N                        shortest admissible segment (1)",
+  "  --maxcp K                         cap on change points, brute only",
+  "  --sigma2 S                        known variance, --cost mean only (1)",
+  "  --mu M                            known mean, --cost var only",
+  "  --perm B                          permutation test with B resamples",
+  "  --seed S                          seed for the permutation draws",
+  "  --quiet                           print only the change point indices",
+  sep = "\n")
+
+die <- function(status, ...) {
+  cat("cpdetect: ", ..., "\n", sep = "", file = stderr())
+  quit(status = status, save = "no")
+}
+
+args <- commandArgs(trailingOnly = TRUE)
+opt <- list(cost = "mean", method = "pelt", penalty = "bic", minseg = 1L,
+            maxcp = Inf, sigma2 = 1, mu = NULL, perm = 0L, seed = NULL,
+            quiet = FALSE, file = NULL)
+
+num_arg <- function(name, v) {
+  x <- suppressWarnings(as.numeric(v))
+  if (is.na(x)) die(2, name, " needs a number, got '", v, "'")
+  x
+}
+
+i <- 1L
+while (i <= length(args)) {
+  a <- args[i]
+  take <- function() {
+    if (i + 1L > length(args)) die(2, a, " needs a value\n", USAGE)
+    args[i + 1L]
+  }
+  if (a == "--help" || a == "-h") { cat(USAGE, "\n"); quit(status = 0, save = "no") }
+  else if (a == "--cost")    { opt$cost <- take(); i <- i + 2L }
+  else if (a == "--method")  { opt$method <- take(); i <- i + 2L }
+  else if (a == "--penalty") { opt$penalty <- take(); i <- i + 2L }
+  else if (a == "--minseg")  { opt$minseg <- num_arg(a, take()); i <- i + 2L }
+  else if (a == "--maxcp")   { opt$maxcp <- num_arg(a, take()); i <- i + 2L }
+  else if (a == "--sigma2")  { opt$sigma2 <- num_arg(a, take()); i <- i + 2L }
+  else if (a == "--mu")      { opt$mu <- num_arg(a, take()); i <- i + 2L }
+  else if (a == "--perm")    { opt$perm <- num_arg(a, take()); i <- i + 2L }
+  else if (a == "--seed")    { opt$seed <- num_arg(a, take()); i <- i + 2L }
+  else if (a == "--quiet")   { opt$quiet <- TRUE; i <- i + 1L }
+  else if (substr(a, 1, 1) == "-" && a != "-") die(2, "unknown option '", a, "'\n", USAGE)
+  else {
+    if (!is.null(opt$file)) die(2, "more than one input file given\n", USAGE)
+    opt$file <- a; i <- i + 1L
+  }
+}
+
+if (is.null(opt$file)) die(2, "no input file\n", USAGE)
+if (!opt$cost %in% cp_types) die(2, "unknown cost '", opt$cost, "'; one of ",
+                                 paste(cp_types, collapse = ", "))
+if (!opt$method %in% cp_methods) die(2, "unknown method '", opt$method, "'; one of ",
+                                     paste(cp_methods, collapse = ", "))
+# Braced because at top level R ends the statement at the newline and then
+# meets an `else` with no `if` in front of it. Inside braces the parser
+# keeps reading, which is why the same shape works in a function and not
+# here.
+pen <- opt$penalty
+if (!is.na(suppressWarnings(as.numeric(pen)))) {
+  pen <- as.numeric(pen)
+} else if (!tolower(pen) %in% cp_penalties) {
+  die(2, "unknown penalty '", opt$penalty, "'; one of ",
+      paste(cp_penalties, collapse = ", "), " or a number")
+}
+if (opt$minseg < 1) die(2, "--minseg must be at least 1")
+
+# Read the series. Anything that is not a number on its own line is a
+# malformed input, not a usage error: the command was right and the data
+# was not.
+raw <- if (opt$file == "-") {
+  tryCatch(readLines(file("stdin")), error = function(e) die(1, "cannot read stdin"))
+} else {
+  if (!file.exists(opt$file)) die(1, "no such file: ", opt$file)
+  if (dir.exists(opt$file)) die(1, "is a directory: ", opt$file)
+  tryCatch(readLines(opt$file, warn = FALSE),
+           error = function(e) die(1, "cannot read ", opt$file, ": ", conditionMessage(e)))
+}
+raw <- trimws(raw)
+raw <- raw[nzchar(raw) & substr(raw, 1, 1) != "#"]
+if (!length(raw)) die(1, "no data in ", opt$file)
+y <- suppressWarnings(as.numeric(raw))
+bad <- which(is.na(y))
+if (length(bad))
+  die(1, "line ", bad[1], " is not a number: '", raw[bad[1]], "'",
+      if (length(bad) > 1) paste0(" (", length(bad), " such lines)") else "")
+if (any(!is.finite(y))) die(1, "the series contains Inf or NaN")
+
+n <- length(y)
+if (opt$minseg > n)
+  die(2, "--minseg ", opt$minseg, " exceeds the series length ", n)
+# The one refusal that is about the model rather than the input. At
+# minseg 1 the meanvar cost is degenerate: a one-observation segment is
+# fitted at the variance floor and no real fit competes, so the global
+# optimum is one segment per observation. Measured in t/test_degenerate.R
+# at 19 of 20 seeds on data with no change point in it. The var cost is
+# NOT degenerate this way, because its mean is fixed, so it is allowed.
+if (opt$cost == "meanvar" && opt$minseg < 2)
+  die(2, "--cost meanvar needs --minseg 2 or more: at 1 a single observation ",
+      "is fitted at the variance floor and the optimum is one segment per ",
+      "observation. See README.md, What does not work.")
+
+fit <- tryCatch(
+  cp_detect(y, opt$cost, method = opt$method, penalty = pen,
+            minseg = as.integer(opt$minseg), maxcp = opt$maxcp,
+            sigma2 = opt$sigma2, mu = opt$mu),
+  error = function(e) die(1, conditionMessage(e)))
+
+if (opt$quiet) {
+  if (length(fit$cp)) cat(paste(fit$cp, collapse = "\n"), "\n", sep = "")
+  quit(status = 0, save = "no")
+}
+
+cat(sprintf("cpdetect n=%d cost=%s method=%s penalty=%s beta=%.6g minseg=%d\n",
+            n, opt$cost, opt$method, fit$penalty, fit$beta, as.integer(opt$minseg)))
+cat("cp", if (length(fit$cp)) paste(fit$cp, collapse = " ") else "", "\n")
+segs <- cp_segments(fit)
+for (r in seq_len(nrow(segs)))
+  cat(sprintf("segment %d %d %d n=%d %s cost=%.6f\n", r, segs$start[r], segs$end[r],
+              segs$n[r], segs$param[r], segs$cost[r]))
+cat(sprintf("total k=%d cost=%.6f penalised=%.6f\n",
+            length(fit$cp), cp_total(fit$cost_obj, fit$cp), fit$cost))
+if (fit$method == "pelt")
+  cat(sprintf("pruned %d/%d evaluations=%d K=%.6g\n",
+              fit$npruned, fit$nadded, fit$ncand, fit$K))
+if (fit$method == "op")
+  cat(sprintf("evaluations=%d\n", fit$ncand))
+if (fit$method == "binseg")
+  cat(sprintf("splits=%d evaluations=%d\n", fit$nsplits, fit$ncand))
+if (fit$method == "brute")
+  cat(sprintf("enumerated=%d maxcp=%d\n", fit$nconsidered, fit$maxcp))
+
+if (opt$perm >= 1) {
+  pt <- tryCatch(
+    cp_permtest(y, opt$cost, B = as.integer(opt$perm),
+                minseg = as.integer(opt$minseg), seed = opt$seed,
+                sigma2 = opt$sigma2, mu = opt$mu),
+    error = function(e) die(1, conditionMessage(e)))
+  cat(sprintf("perm stat=%.6f at=%d B=%d hits=%d p=%.6g seed=%s\n",
+              pt$stat, pt$at, pt$B, pt$hits, pt$p,
+              if (is.null(opt$seed)) "none" else format(opt$seed)))
+}
+quit(status = 0, save = "no")
